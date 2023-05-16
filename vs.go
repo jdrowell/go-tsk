@@ -72,6 +72,7 @@ func (part *Partition) Show(volNo int) {
     defer fs.Close()
 
     fmt.Printf("    filesystem type: %s (%d)\n", fs.TypeName(), fs.Type())
+    // get the root directory
     dir := fs.OpenDirectory(fs.RootInum())
     if fs == nil {
         fmt.Printf("    couldn't open root directory\n")

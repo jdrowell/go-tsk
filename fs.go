@@ -8,6 +8,7 @@ package main
 import "C"
 
 import (
+    "errors"
     "fmt"
     "unsafe"
 )
@@ -15,6 +16,10 @@ import (
 type Filesystem C.TSK_FS_INFO
 type Directory  C.TSK_FS_DIR
 type Filename   C.TSK_FS_NAME
+type File       C.TSK_FS_FILE
+
+type WalkCallback func (file *File, path string)
+var walkCBs = make(map[int]WalkCallback)
 
 func (part *Partition) OpenFilesystem() *Filesystem {
     cFs := C.tsk_fs_open_vol((*C.TSK_VS_PART_INFO)(part), C.TSK_FS_TYPE_DETECT)
@@ -44,34 +49,29 @@ func (fs *Filesystem) OpenDirectory(aMeta int) *Directory {
     return (*Directory)(cDir)
 }
 
-//func (fs *Filesystem) DirWalk(aMeta int, aFlags int, aAction *func, aPtr int) {
-//func (fs *Filesystem) DirWalk(cb func(fn Filename, path string)) {
-func (dir *Directory) Walk() {
-    count := 0
-    data := unsafe.Pointer(&count)
-    //callback := C.callback_func(C.dirwalk_callback)
-    // ret := C.tsk_fs_dir_walk((*C.TSK_FS_INFO)(fs), C.ulong(fs.RootInum()), C.TSK_FS_DIR_WALK_FLAG_ALLOC | C.TSK_FS_DIR_WALK_FLAG_RECURSE, (*[0]byte)(C.dirwalk_callback), data)
+func my_callback(v string) {
+    fmt.Println("hello", v)
+}
+
+func (dir *Directory) Walk(cb WalkCallback) error {
+    k := int(dir.addr)
+    walkCBs[k] = cb
+    data := unsafe.Pointer(&k)
     ret := C.tsk_fs_dir_walk(dir.fs_info, dir.addr, C.TSK_FS_DIR_WALK_FLAG_ALLOC | C.TSK_FS_DIR_WALK_FLAG_RECURSE, (*[0]byte)(C.dirwalk_callback), data)
 
     //if ret != C.TSK_ERR_OK {
     if ret != 0 {
-        fmt.Println("Error: could not walk directory tree")
-        return
+        return fmt.Errorf("%w", errors.New("Could not walk the directory tree"))
     }
 
-    fmt.Printf("Found %d files\n", count)
+    return nil
 }
 
 //export go_dirwalk_callback
 func go_dirwalk_callback(cFile *C.TSK_FS_FILE, cString *C.char, data unsafe.Pointer) C.int {
-    // prog := "-\\|/"
-    // count_ptr := (*int)(data)
-    // i := (*count_ptr) % 4
-    //fmt.Printf("%c%c", prog[i], 8)
-    name := cFile.name
-    if name._type == C.TSK_FS_NAME_TYPE_REG {
-        fmt.Printf("%s%s\n", C.GoString(cString), C.GoString(cFile.name.name))
-    }
+    k := (*int)(data)
+    cb := walkCBs[*k]
+    cb((*File)(cFile), C.GoString(cString))
 
     return 0;
 }
@@ -90,9 +90,16 @@ func (dir *Directory) GetName(n int) *Filename {
 }
 
 func (dir *Directory) Show() {
-    fmt.Printf("    root dir: %d\n", dir.Size())
-    // ((*Filesystem)(dir.fs_info)).DirWalk()
-    dir.Walk()
+    cb := func (file *File, path string) {
+        name := file.name
+        if name._type == C.TSK_FS_NAME_TYPE_REG {
+            fmt.Printf("%s%s\n", path, C.GoString(file.name.name))
+        }
+    }
+    err := dir.Walk(cb)
+    if err != nil {
+        return
+    }
     // for i := 0; i < dir.Size(); i += 1 {
     //     fn := dir.GetName(i)
     //     fmt.Printf("    %v\n", fn.Name())
@@ -102,36 +109,4 @@ func (dir *Directory) Show() {
 func (fn *Filename) Name() string {
     return C.GoString(fn.name)
 }
-
-
-/*
-func (vs *VolumeSystem) BlockSize() int {
-    return int(vs.block_size)
-}
-
-func (vs *VolumeSystem) PartCount() int {
-    return int(vs.part_count)
-}
-
-func (vs *VolumeSystem) TypeDescr() string {
-    return C.GoString(C.tsk_vs_type_todesc(vs.vstype))
-}
-
-func (vs *VolumeSystem) GetPartition(n int) *PartitionInfo {
-    cPi := C.tsk_vs_part_get((*C.TSK_VS_INFO)(vs), C.uint(n))
-    return (*PartitionInfo)(cPi)
-}
-
-func (pi *PartitionInfo) Descr() string {
-    return C.GoString(pi.desc)
-}
-
-func (pi *PartitionInfo) Len() int {
-    return int(pi.len)
-}
-
-func (pi *PartitionInfo) SlotNumber() int {
-    return int(pi.slot_num)
-}
-*/
 

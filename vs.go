@@ -1,4 +1,4 @@
-package main
+package tsk
 
 /*
 #cgo LDFLAGS: -ltsk
@@ -61,6 +61,7 @@ func (part *Partition) SlotNumber() int {
 }
 
 func (part *Partition) Show(volNo int) {
+    // we need vs for the block size
     vs := (*VolumeSystem)(part.vs)
 
     fmt.Printf("  p[%d][%d]: %s (%d bytes)\n", volNo, part.SlotNumber(), part.Descr(), part.Len() * vs.BlockSize())
@@ -71,15 +72,6 @@ func (part *Partition) Show(volNo int) {
     }
     defer fs.Close()
 
-    fmt.Printf("    filesystem type: %s (%d)\n", fs.TypeName(), fs.Type())
-    // get the root directory
-    dir := fs.OpenDirectory(fs.RootInum())
-    if fs == nil {
-        fmt.Printf("    couldn't open root directory\n")
-        return
-    }
-    defer dir.Close()
-
-    dir.Show()
+    fs.Show()
 }
 

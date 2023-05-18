@@ -1,4 +1,4 @@
-package main
+package tsk
 
 /*
 #cgo LDFLAGS: -ltsk

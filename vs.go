@@ -6,10 +6,6 @@ package tsk
 */
 import "C"
 
-import (
-    "fmt"
-)
-
 type VolumeSystem  C.TSK_VS_INFO
 type Partition     C.TSK_VS_PART_INFO
 
@@ -35,6 +31,10 @@ func (vs *VolumeSystem) Type() int {
     return int(vs.vstype)
 }
 
+func (vs *VolumeSystem) Offset() int {
+    return int(vs.offset)
+}
+
 func (vs *VolumeSystem) TypeDescr() string {
     return C.GoString(C.tsk_vs_type_todesc(vs.vstype))
 }
@@ -52,26 +52,19 @@ func (part *Partition) Descr() string {
     return C.GoString(part.desc)
 }
 
+func (part *Partition) Start() int {
+    return int(part.start)
+}
+
 func (part *Partition) Len() int {
     return int(part.len)
 }
 
-func (part *Partition) SlotNumber() int {
-    return int(part.slot_num)
+func (part *Partition) TableNumber() int {
+    return int(part.table_num)
 }
 
-func (part *Partition) Show(volNo int) {
-    // we need vs for the block size
-    vs := (*VolumeSystem)(part.vs)
-
-    fmt.Printf("  p[%d][%d]: %s (%d bytes)\n", volNo, part.SlotNumber(), part.Descr(), part.Len() * vs.BlockSize())
-    fs := part.OpenFilesystem()
-    if fs == nil {
-        fmt.Printf("    unknown filesystem\n")
-        return
-    }
-    defer fs.Close()
-
-    fs.Show()
+func (part *Partition) SlotNumber() int {
+    return int(part.slot_num)
 }
 

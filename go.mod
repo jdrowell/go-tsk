@@ -1,3 +1,3 @@
-module eyb.com.br/go-tsk
+module github.com/jdrowell/go-tsk
 
 go 1.19
